@@ -1924,7 +1924,7 @@ def maybe_compress(context: Context, compression: Compression, src: Path, dst: O
         return
 
     if not dst:
-        dst = src.parent / f"{src.name}.{compression}"
+        dst = src.parent / f"{src.name}{compression.extension()}"
 
     with complete_step(f"Compressing {src} with {compression}"):
         with src.open("rb") as i:
@@ -2844,8 +2844,9 @@ def setup_workspace(args: Args, config: Config) -> Iterator[Path]:
             options=["--bind", config.workspace_dir_or_default(), config.workspace_dir_or_default()],
         )
         stack.callback(lambda: rmtree(workspace, sandbox=sandbox))
+        (workspace / "tmp").mkdir(mode=0o1777)
 
-        with scopedenv({"TMPDIR" : os.fspath(workspace)}):
+        with scopedenv({"TMPDIR" : os.fspath(workspace / "tmp")}):
             try:
                 yield Path(workspace)
             except BaseException:
@@ -3545,7 +3546,7 @@ def run_verb(args: Args, images: Sequence[Config], *, resources: Path) -> None:
         return
 
     for config in images:
-        if (minversion := config.minimum_version) and minversion <= __version__:
+        if (minversion := config.minimum_version) and minversion > __version__:
             die(f"mkosi {minversion} or newer is required to build this configuration (found {__version__})")
 
         if not config.repart_offline and os.getuid() != 0:
